@@ -111,7 +111,7 @@ TPS55289::~TPS55289()
 esp_err_t TPS55289::writeReg(uint8_t addr, uint8_t value)
 {
     uint8_t write_buf[2] = {addr, value};                     ///< Буфер для записи.
-    return i2c_master_transmit(mI2CDevice, write_buf, 2, -1); ///< Запись данных в регистр.
+    return i2c_master_transmit(mI2CDevice, write_buf, 2, 500); ///< Запись данных в регистр.
 }
 
 /// Чтение значения из регистра устройства.
@@ -122,7 +122,7 @@ esp_err_t TPS55289::writeReg(uint8_t addr, uint8_t value)
  */
 esp_err_t TPS55289::readReg(uint8_t addr, uint8_t *value)
 {
-    return i2c_master_transmit_receive(mI2CDevice, &addr, 1, value, 1, -1); ///< Чтение данных из регистра.
+    return i2c_master_transmit_receive(mI2CDevice, &addr, 1, value, 1, 500); ///< Чтение данных из регистра.
 }
 
 /// Прерывание работы конвертора.
