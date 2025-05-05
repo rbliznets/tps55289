@@ -22,26 +22,33 @@ static const char *TAG = "TPS55289"; ///< Тег для логирования.
 bool TPS55289::i2cProbe(int16_t i2c_num, int16_t pwr_pin)
 {
     bool res = false;
-    gpio_config_t io_conf = {
-        .pin_bit_mask = BIT64(pwr_pin),        ///< Маска пина.
-        .mode = GPIO_MODE_OUTPUT,              ///< Режим пина (выход).
-        .pull_up_en = GPIO_PULLUP_ENABLE,      ///< Включение подтягивающего резистора.
-        .pull_down_en = GPIO_PULLDOWN_DISABLE, ///< Выключение опускающего резистора.
-        .intr_type = GPIO_INTR_DISABLE};       ///< Отключение прерываний.
+    gpio_config_t io_conf;
+    if (pwr_pin >= 0)
+    {
+        io_conf = {
+            .pin_bit_mask = BIT64(pwr_pin),        ///< Маска пина.
+            .mode = GPIO_MODE_OUTPUT,              ///< Режим пина (выход).
+            .pull_up_en = GPIO_PULLUP_ENABLE,      ///< Включение подтягивающего резистора.
+            .pull_down_en = GPIO_PULLDOWN_DISABLE, ///< Выключение опускающего резистора.
+            .intr_type = GPIO_INTR_DISABLE};       ///< Отключение прерываний.
 
-    gpio_config(&io_conf);                  ///< Настройка пина.
-    gpio_set_level((gpio_num_t)pwr_pin, 1); ///< Включение питания.
-    vTaskDelay(100);                        ///< Задержка для стабилизации питания.
+        gpio_config(&io_conf);                  ///< Настройка пина.
+        gpio_set_level((gpio_num_t)pwr_pin, 1); ///< Включение питания.
+        vTaskDelay(100);                        ///< Задержка для стабилизации питания.
+    }
 
     if (I2CMaster::Instance()->probe(i2c_num, TPS55289_I2C_ADDR)) ///< Проверка наличия устройства.
     {
         res = true;
     }
 
-    gpio_set_level((gpio_num_t)pwr_pin, 0);   ///< Выключение питания.
-    io_conf.mode = GPIO_MODE_DISABLE;         ///< Отключение пина.
-    io_conf.pull_up_en = GPIO_PULLUP_DISABLE; ///< Выключение подтягивающего резистора.
-    gpio_config(&io_conf);                    ///< Обновление настроек пина.
+    if (pwr_pin >= 0)
+    {
+        gpio_set_level((gpio_num_t)pwr_pin, 0);   ///< Выключение питания.
+        io_conf.mode = GPIO_MODE_DISABLE;         ///< Отключение пина.
+        io_conf.pull_up_en = GPIO_PULLUP_DISABLE; ///< Выключение подтягивающего резистора.
+        gpio_config(&io_conf);                    ///< Обновление настроек пина.
+    }
 
     return res; ///< Возврат результата проверки.
 }
@@ -68,16 +75,19 @@ TPS55289::TPS55289(int16_t i2c_num, int16_t pwr_pin) : m_i2c_num(i2c_num), mEnab
         ESP_LOGE(TAG, "Add i2c failed"); ///< Логирование ошибки.
     }
 
-    gpio_config_t io_conf = {
-        .pin_bit_mask = BIT64(pwr_pin),        ///< Маска пина.
-        .mode = GPIO_MODE_OUTPUT,              ///< Режим пина (выход).
-        .pull_up_en = GPIO_PULLUP_ENABLE,      ///< Включение подтягивающего резистора.
-        .pull_down_en = GPIO_PULLDOWN_DISABLE, ///< Выключение опускающего резистора.
-        .intr_type = GPIO_INTR_DISABLE};       ///< Отключение прерываний.
+    if (mEnable >= 0)
+    {
+        gpio_config_t io_conf = {
+            .pin_bit_mask = BIT64(pwr_pin),        ///< Маска пина.
+            .mode = GPIO_MODE_OUTPUT,              ///< Режим пина (выход).
+            .pull_up_en = GPIO_PULLUP_ENABLE,      ///< Включение подтягивающего резистора.
+            .pull_down_en = GPIO_PULLDOWN_DISABLE, ///< Выключение опускающего резистора.
+            .intr_type = GPIO_INTR_DISABLE};       ///< Отключение прерываний.
 
-    gpio_config(&io_conf);      ///< Настройка пина.
-    gpio_set_level(mEnable, 0); ///< Выключение питания.
-    vTaskDelay(10);             ///< Задержка.
+        gpio_config(&io_conf);      ///< Настройка пина.
+        gpio_set_level(mEnable, 0); ///< Выключение питания.
+        vTaskDelay(10);             ///< Задержка.
+    }
 }
 
 /// Деструктор.
@@ -88,14 +98,17 @@ TPS55289::~TPS55289()
 {
     esp_err_t ret;
     setVoltage(0.0); ///< Установка напряжения на 0 В.
-    gpio_config_t io_conf = {
-        .pin_bit_mask = BIT64(mEnable),        ///< Маска пина.
-        .mode = GPIO_MODE_DISABLE,             ///< Отключение пина.
-        .pull_up_en = GPIO_PULLUP_DISABLE,     ///< Выключение подтягивающего резистора.
-        .pull_down_en = GPIO_PULLDOWN_DISABLE, ///< Выключение опускающего резистора.
-        .intr_type = GPIO_INTR_DISABLE};       ///< Отключение прерываний.
+    if (mEnable >= 0)
+    {
+        gpio_config_t io_conf = {
+            .pin_bit_mask = BIT64(mEnable),        ///< Маска пина.
+            .mode = GPIO_MODE_DISABLE,             ///< Отключение пина.
+            .pull_up_en = GPIO_PULLUP_DISABLE,     ///< Выключение подтягивающего резистора.
+            .pull_down_en = GPIO_PULLDOWN_DISABLE, ///< Выключение опускающего резистора.
+            .intr_type = GPIO_INTR_DISABLE};       ///< Отключение прерываний.
 
-    gpio_config(&io_conf);                      ///< Обновление настроек пина.
+        gpio_config(&io_conf); ///< Обновление настроек пина.
+    }
     ret = i2c_master_bus_rm_device(mI2CDevice); ///< Удаление устройства с шины I2C.
     if (ret != ESP_OK)
         ESP_LOGE(TAG, "Device deleting failed: %d", ret); ///< Логирование ошибки.
@@ -110,7 +123,7 @@ TPS55289::~TPS55289()
  */
 esp_err_t TPS55289::writeReg(uint8_t addr, uint8_t value)
 {
-    uint8_t write_buf[2] = {addr, value};                     ///< Буфер для записи.
+    uint8_t write_buf[2] = {addr, value};                      ///< Буфер для записи.
     return i2c_master_transmit(mI2CDevice, write_buf, 2, 500); ///< Запись данных в регистр.
 }
 
@@ -128,9 +141,10 @@ esp_err_t TPS55289::readReg(uint8_t addr, uint8_t *value)
 /// Прерывание работы конвертора.
 void TPS55289::abort()
 {
-    gpio_set_level(mEnable, 0); ///< Выключение питания.
-    ESP_LOGE(TAG, "abort");     ///< Логирование прерывания.
-    mVoltage = 0.0;             ///< Сброс напряжения.
+    if (mEnable >= 0)
+        gpio_set_level(mEnable, 0); ///< Выключение питания.
+    ESP_LOGE(TAG, "abort");         ///< Логирование прерывания.
+    mVoltage = 0.0;                 ///< Сброс напряжения.
 }
 
 /// Установка напряжения на выходе конвертора.
@@ -158,7 +172,8 @@ bool TPS55289::setVoltage(float volts)
         }
         vTaskDelay(100);            ///< Задержка.
         mVoltage = 0.0;             ///< Сброс напряжения.
-        gpio_set_level(mEnable, 0); ///< Выключение питания.
+        if (mEnable >= 0)
+            gpio_set_level(mEnable, 0); ///< Выключение питания.
         ESP_LOGI(TAG, "off");       ///< Логирование отключения.
         return true;
     }
@@ -173,7 +188,8 @@ bool TPS55289::setVoltage(float volts)
     }
     else ///< Если напряжение не установлено, включаем питание и устанавливаем предельный ток.
     {
-        gpio_set_level(mEnable, 1);                 ///< Включение питания.
+        if (mEnable >= 0)
+            gpio_set_level(mEnable, 1);                 ///< Включение питания.
         vTaskDelay(10);                             ///< Задержка.
         uint8_t r2 = (uint8_t)(mCurrentLimit * 20); ///< Вычисление значения предельного тока.
         if (writeReg(2, (r2 | 0x80)) != ESP_OK)     ///< Установка предельного тока.

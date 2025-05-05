@@ -49,12 +49,12 @@ public:
     /// @param i2c_num Номер I2C-порта
     /// @param pwr_pin Пин питания (если требуется активация по питанию)
     /// @return true - устройство найдено, false - отсутствует ответ
-    static bool i2cProbe(int16_t i2c_num, int16_t pwr_pin);
+    static bool i2cProbe(int16_t i2c_num, int16_t pwr_pin = -1);
 
     /// @brief Конструктор преобразователя
     /// @param i2c_num Номер I2C-порта (0, 1 и т.д.)
     /// @param pwr_pin Пин управления питанием (GPIO_NUM_NC - не используется)
-    TPS55289(int16_t i2c_num, int16_t pwr_pin);
+    TPS55289(int16_t i2c_num, int16_t pwr_pin = -1);
 
     /// @brief Деструктор (автоматически отключает устройство)
     ~TPS55289();
