@@ -58,8 +58,9 @@ bool TPS55289::i2cProbe(int16_t i2c_num, int16_t pwr_pin)
  * Инициализация конвертора TPS55289.
  * \param i2c_num Номер I2C-шины.
  * \param pwr_pin Номер пина управления питанием.
+ * \param failed callback на отказ устройства
  */
-TPS55289::TPS55289(int16_t i2c_num, int16_t pwr_pin) : m_i2c_num(i2c_num), mEnable((gpio_num_t)pwr_pin)
+TPS55289::TPS55289(int16_t i2c_num, int16_t pwr_pin, onTpsFailed *failed) : m_i2c_num(i2c_num), mEnable((gpio_num_t)pwr_pin), mOnFailed(failed)
 {
     I2CMaster::Instance()->take(m_i2c_num); ///< Захват I2C-шины.
 
@@ -73,6 +74,9 @@ TPS55289::TPS55289(int16_t i2c_num, int16_t pwr_pin) : m_i2c_num(i2c_num), mEnab
     if (!I2CMaster::Instance()->add(m_i2c_num, &dev_cfg, &mI2CDevice)) ///< Добавление устройства на шину I2C.
     {
         ESP_LOGE(TAG, "Add i2c failed"); ///< Логирование ошибки.
+        if (mOnFailed != nullptr)
+            mOnFailed(this);
+        return;
     }
 
     if (mEnable >= 0)
@@ -123,8 +127,19 @@ TPS55289::~TPS55289()
  */
 esp_err_t TPS55289::writeReg(uint8_t addr, uint8_t value)
 {
-    uint8_t write_buf[2] = {addr, value};                      ///< Буфер для записи.
-    return i2c_master_transmit(mI2CDevice, write_buf, 2, 500); ///< Запись данных в регистр.
+    uint8_t write_buf[2] = {addr, value};                                                ///< Буфер для записи.
+    esp_err_t res = i2c_master_transmit(mI2CDevice, write_buf, 2, TPS55289_I2C_TIMEOUT); ///< Запись данных в регистр.
+    if (res != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Write error 0x%02x:%d", addr, value);
+        if (mOnFailed != nullptr)
+            mOnFailed(this);
+    }
+    else
+    {
+        ESP_LOGD(TAG, "Write regs 0x%02x:%d", addr, value);
+    }
+    return res;
 }
 
 /// Чтение значения из регистра устройства.
@@ -135,7 +150,18 @@ esp_err_t TPS55289::writeReg(uint8_t addr, uint8_t value)
  */
 esp_err_t TPS55289::readReg(uint8_t addr, uint8_t *value)
 {
-    return i2c_master_transmit_receive(mI2CDevice, &addr, 1, value, 1, 500); ///< Чтение данных из регистра.
+    esp_err_t res = i2c_master_transmit_receive(mI2CDevice, &addr, 1, value, 1, TPS55289_I2C_TIMEOUT); ///< Чтение данных из регистра.
+    if (res != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Read error 0x%02x", addr);
+        if (mOnFailed != nullptr)
+            mOnFailed(this);
+    }
+    else
+    {
+        ESP_LOGD(TAG, "Read regs 0x%02x:%d", addr, *value);
+    }
+    return res;
 }
 
 /// Прерывание работы конвертора.
@@ -170,11 +196,11 @@ bool TPS55289::setVoltage(float volts)
             abort(); ///< Прерывание работы.
             return false;
         }
-        vTaskDelay(100);            ///< Задержка.
-        mVoltage = 0.0;             ///< Сброс напряжения.
+        vTaskDelay(100); ///< Задержка.
+        mVoltage = 0.0;  ///< Сброс напряжения.
         if (mEnable >= 0)
             gpio_set_level(mEnable, 0); ///< Выключение питания.
-        ESP_LOGI(TAG, "off");       ///< Логирование отключения.
+        ESP_LOGI(TAG, "off");           ///< Логирование отключения.
         return true;
     }
 
@@ -189,7 +215,7 @@ bool TPS55289::setVoltage(float volts)
     else ///< Если напряжение не установлено, включаем питание и устанавливаем предельный ток.
     {
         if (mEnable >= 0)
-            gpio_set_level(mEnable, 1);                 ///< Включение питания.
+            gpio_set_level(mEnable, 1);             ///< Включение питания.
         vTaskDelay(10);                             ///< Задержка.
         uint8_t r2 = (uint8_t)(mCurrentLimit * 20); ///< Вычисление значения предельного тока.
         if (writeReg(2, (r2 | 0x80)) != ESP_OK)     ///< Установка предельного тока.

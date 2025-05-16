@@ -11,6 +11,12 @@
 
 /// I2C адрес микросхемы TPS55289 (7-битный формат)
 #define TPS55289_I2C_ADDR (0x75)
+#define TPS55289_I2C_TIMEOUT (150)
+
+class TPS55289;
+/// @brief Функция на отказ устройства
+/// @param device - указатель на устройство.
+typedef void onTpsFailed(TPS55289 *device);
 
 /*!
     \brief Класс для управления Buck-Boost преобразователем TPS55289
@@ -27,6 +33,8 @@ protected:
     i2c_master_dev_handle_t mI2CDevice; ///< Хэндл подключенного I2C устройства
     float mVoltage = 0.0;               ///< Текущее выходное напряжение (в вольтах)
     float mCurrentLimit = 5.0;          ///< Лимит выходного тока (в амперах)
+
+    onTpsFailed *mOnFailed = nullptr; ///< callback на отказ устройства
 
     /// @brief Запись значения в регистр преобразователя
     /// @param addr Адрес регистра (0x00-0xFF)
@@ -54,7 +62,8 @@ public:
     /// @brief Конструктор преобразователя
     /// @param i2c_num Номер I2C-порта (0, 1 и т.д.)
     /// @param pwr_pin Пин управления питанием (GPIO_NUM_NC - не используется)
-    TPS55289(int16_t i2c_num, int16_t pwr_pin = -1);
+    /// @param failed callback на отказ устройства
+    TPS55289(int16_t i2c_num, int16_t pwr_pin = -1, onTpsFailed *failed = nullptr);
 
     /// @brief Деструктор (автоматически отключает устройство)
     ~TPS55289();
