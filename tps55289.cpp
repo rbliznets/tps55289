@@ -196,11 +196,11 @@ bool TPS55289::setVoltage(float volts)
             abort(); ///< Прерывание работы.
             return false;
         }
-        vTaskDelay(100); ///< Задержка.
+        vTaskDelay(10); ///< Задержка.
         mVoltage = 0.0;  ///< Сброс напряжения.
         if (mEnable >= 0)
             gpio_set_level(mEnable, 0); ///< Выключение питания.
-        ESP_LOGI(TAG, "off");           ///< Логирование отключения.
+        ESP_LOGD(TAG, "off");           ///< Логирование отключения.
         return true;
     }
 
@@ -242,7 +242,7 @@ bool TPS55289::setVoltage(float volts)
     }
 
     mVoltage = volts;                      ///< Обновление текущего напряжения.
-    ESP_LOGI(TAG, "setVoltage %f", volts); ///< Логирование установки напряжения.
+    ESP_LOGD(TAG, "setVoltage %f", volts); ///< Логирование установки напряжения.
     return true;
 }
 
