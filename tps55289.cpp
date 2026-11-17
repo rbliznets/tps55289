@@ -175,7 +175,7 @@ void TPS55289::abort()
 
 /// Установка напряжения на выходе конвертора.
 /*!
- * \param volts Напряжение (0.8 ... 22.0 В).
+ * \param volts Напряжение (0.8 ... 30.0 В).
  * \return true, если напряжение успешно установлено, иначе false.
  */
 bool TPS55289::setVoltage(float volts)
@@ -183,9 +183,9 @@ bool TPS55289::setVoltage(float volts)
     if (mVoltage == volts)
         return true; ///< Возврат, если напряжение уже установлено.
 
-    if (((volts < 0.8) && (volts != 0.0)) || (volts > 22)) ///< Проверка допустимого диапазона напряжения.
+    if (((volts < 0.8) && (volts != 0.0)) || (volts > 30)) ///< Проверка допустимого диапазона напряжения (микросхема до 30 В).
     {
-        ESP_LOGW(TAG, "setVoltage 0.8 .. 22.0: %f failed", volts); ///< Логирование ошибки.
+        ESP_LOGW(TAG, "setVoltage 0.8 .. 30.0: %f failed", volts); ///< Логирование ошибки.
         return false;
     }
 
